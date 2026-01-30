@@ -24,6 +24,23 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false
-  }
+    "noPropertyAccessFromIndexSignature": false,
+
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    "baseUrl": "./src",
+    "paths": {
+      "@bootstrap/*": ["bootstrap/*"],
+      "@modules/*": ["modules/*"],
+      "@shared/*": ["shared/*"],
+      "@db/*": ["shared/database/*"],
+      "@cache/*": ["shared/cache/*"],
+      "@error/*": ["shared/errors/*"]
+    },
+
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
 }
