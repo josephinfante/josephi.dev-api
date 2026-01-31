@@ -1,17 +1,23 @@
+import http from 'http';
 import { createApp } from '@bootstrap/create-app';
 import { environment } from '@shared/config/environment';
 import { logger } from '@shared/logger';
+import { startMusicIngestWS } from '@modules/music/music.ingest.ws';
 
 export async function startApp() {
   const app = createApp();
 
-  const server = app.listen(environment.PORT, () => {
+  const httpServer = http.createServer(app);
+
+  startMusicIngestWS(httpServer);
+
+  httpServer.listen(environment.PORT, () => {
     logger.info(`Server running in ${environment.NODE_ENV} mode on port ${environment.PORT}`);
   });
 
   const shutdown = async () => {
     logger.info('Shutting down gracefully...');
-    server.close();
+    httpServer.close();
     logger.info('Shutdown complete.');
     process.exit(0);
   };
