@@ -1,4 +1,5 @@
 import type { Router } from 'express';
+import { createSSERoutes } from 'transports/sse/sse.routes';
 
 export interface ModuleRoute {
   path: string;
@@ -6,5 +7,5 @@ export interface ModuleRoute {
 }
 
 export function getModuleRoutes(): ModuleRoute[] {
-  return [];
+  return [{ path: '/', router: createSSERoutes() }];
 }

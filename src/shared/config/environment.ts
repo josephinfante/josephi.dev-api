@@ -15,6 +15,7 @@ export interface IEnvironmentVariables {
   DB_SSL: boolean;
   REDIS_URL: string;
   APP_VERSION?: string;
+  MUSIC_WS_TOKEN: string;
 }
 
 const environmentSchema = z.object({
@@ -48,6 +49,7 @@ const environmentSchema = z.object({
       }
     }, 'REDIS_URL must be a valid Redis URL'),
   APP_VERSION: z.string().optional().default('1.0.0'),
+  MUSIC_WS_TOKEN: z.string().min(1, 'MUSIC_WS_TOKEN must be provided'),
 });
 
 const result = environmentSchema.safeParse(process.env);

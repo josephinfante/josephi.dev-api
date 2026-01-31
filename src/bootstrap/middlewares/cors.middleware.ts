@@ -19,10 +19,13 @@ export const corsMiddleware = cors({
       return;
     }
     callback(
-      new AuthorizationError(APP_ERROR_KEYS.AUTH_CORS_NOT_ALLOWED, undefined, {
-        context: { origin },
+      new AuthorizationError({
+        key: APP_ERROR_KEYS.AUTH_CORS_NOT_ALLOWED,
+        additionalMetadata: {
+          context: { origin },
+        },
       }),
     );
   },
-  credentials: true,
+  credentials: false,
 });
