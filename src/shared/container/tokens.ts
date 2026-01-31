@@ -4,4 +4,7 @@ export const TOKENS = {
   Logger: Symbol.for('Logger'),
   PasswordHasher: Symbol.for('PasswordHasher'),
   TokenService: Symbol.for('TokenService'),
+  PresenceCache: Symbol.for('PresenceCache'),
+
+  MusicRepository: Symbol.for('MusicRepository'),
 } as const;
