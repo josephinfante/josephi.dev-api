@@ -45,11 +45,16 @@ export async function sseController(req: Request, res: Response) {
     }
   }
 
-  send('presence.init', full);
+  const recent = await musicRepository.findRecent(10);
+  send('presence.init', { ...full, history: recent });
 
   // -------- REDIS SUBSCRIBE --------
   const unsubscribe = await presenceCache.subscribe('music.updated', (music) => {
     send('music.updated', music);
+  });
+
+  const unsubscribeHistory = await presenceCache.subscribe('music.history.updated', (history) => {
+    send('music.history.updated', history);
   });
 
   // -------- HEARTBEAT --------
@@ -61,6 +66,7 @@ export async function sseController(req: Request, res: Response) {
   req.on('close', () => {
     clearInterval(heartbeat);
     unsubscribe();
+    unsubscribeHistory();
     logger.info('[SSE] Client disconnected');
   });
 }
