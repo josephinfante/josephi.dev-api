@@ -1,7 +1,7 @@
 import type { CacheService } from '@shared/cache';
 import { TOKENS } from '@shared/container/tokens';
 import { inject, injectable } from 'tsyringe';
-import type { MusicPresence, Presence } from './presence.types';
+import type { MusicPresence, Presence, SteamPresence, SteamRecentGame } from './presence.types';
 import { PRESENCE_KEYS } from '@shared/cache/cache.keys';
 
 @injectable()
@@ -16,6 +16,24 @@ export class PresenceCache {
 
   async getMusic(): Promise<MusicPresence | null> {
     return this.cache.get<MusicPresence>(PRESENCE_KEYS.MUSIC);
+  }
+
+  /* -------- STEAM -------- */
+
+  async setSteam(steam: SteamPresence | null) {
+    await this.cache.set(PRESENCE_KEYS.STEAM, steam, 600);
+  }
+
+  async getSteam(): Promise<SteamPresence | null> {
+    return this.cache.get<SteamPresence>(PRESENCE_KEYS.STEAM);
+  }
+
+  async setSteamRecent(recent: SteamRecentGame[]) {
+    await this.cache.set(PRESENCE_KEYS.STEAM_RECENT, recent, 600);
+  }
+
+  async getSteamRecent(): Promise<SteamRecentGame[]> {
+    return (await this.cache.get<SteamRecentGame[]>(PRESENCE_KEYS.STEAM_RECENT)) ?? [];
   }
 
   /* -------- FULL SNAPSHOT -------- */
