@@ -159,14 +159,18 @@ export class PresenceService {
 
     const endedSession =
       prev?.state === 'PLAYING' &&
-      prev.game &&
+      prev.game !== null &&
       (steam.state !== 'PLAYING' || prev.game.appId !== steam.game?.appId);
 
     if (endedSession) {
+      const previousGame = prev?.game;
+      if (!previousGame) {
+        return;
+      }
       await this.steamRepository.replaceLatest({
-        appId: prev.game.appId,
-        name: prev.game.name,
-        iconUrl: prev.game.iconUrl ?? null,
+        appId: previousGame.appId,
+        name: previousGame.name,
+        iconUrl: previousGame.iconUrl ?? null,
         startedAt: new Date(prev.session?.startedAt ?? Date.now()),
         endedAt: new Date(steam.lastUpdatedAt),
       });
