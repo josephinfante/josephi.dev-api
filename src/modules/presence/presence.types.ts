@@ -10,9 +10,41 @@ export type MusicPresence = {
   // trackId?: string; // opcional futuro
 };
 
+export type SteamPresence = {
+  state: 'OFFLINE' | 'ONLINE_IDLE' | 'PLAYING';
+  profile: {
+    steamId: string;
+    nickname: string;
+    profileUrl: string;
+    avatar: string;
+    frameUrl: string;
+    backgroundSmall: string;
+    backgroundLarge: string;
+  };
+  game: {
+    appId: string;
+    name: string;
+    iconUrl: string | null;
+  } | null;
+  session: {
+    startedAt: number;
+    elapsedMs: number;
+    elapsedLabel: string;
+  } | null;
+  lastUpdatedAt: number;
+};
+
+export type SteamRecentGame = {
+  appId: string;
+  name: string;
+  iconUrl: string | null;
+  playtime2WeeksMs: number | null;
+  playtimeForeverMs: number | null;
+};
+
 export type Presence = {
   music: MusicPresence | null;
-  //   steam: SteamPresence | null;
+  steam: SteamPresence | null;
   // github: GithubPresence | null;
   updatedAt: number;
 };

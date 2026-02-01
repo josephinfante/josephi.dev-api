@@ -1,9 +1,36 @@
 import { TOKENS } from '@shared/container/tokens';
 import { inject, injectable } from 'tsyringe';
-import type { MusicPresence, Presence } from './presence.types';
+import type { MusicPresence, Presence, SteamPresence } from './presence.types';
 import type { PresenceCache } from './presence.cache';
 import type { MusicRepository } from '@modules/music/music.repository';
-import { shouldEmitMusic } from './presence.helper';
+import type { SteamRepository } from '@modules/steam/steam.repository';
+import { shouldEmitMusic, shouldEmitSteam } from './presence.helper';
+
+function formatSteamDuration(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  return `${minutes}m`;
+}
+
+function withSteamDuration<T extends { startedAt: Date; endedAt: Date | null }>(entry: T) {
+  if (!entry.endedAt) {
+    return { ...entry, durationMs: null, durationLabel: null };
+  }
+
+  const durationMs = Math.max(0, entry.endedAt.getTime() - entry.startedAt.getTime());
+
+  return {
+    ...entry,
+    durationMs,
+    durationLabel: formatSteamDuration(durationMs),
+  };
+}
 
 @injectable()
 export class PresenceService {
@@ -11,13 +38,15 @@ export class PresenceService {
   constructor(
     @inject(TOKENS.PresenceCache) private presenceCache: PresenceCache,
     @inject(TOKENS.MusicRepository) private musicRepository: MusicRepository,
+    @inject(TOKENS.SteamRepository) private steamRepository: SteamRepository,
   ) {}
 
   async getFullPresence(): Promise<Presence> {
     const music = await this.presenceCache.getMusic();
+    const steam = await this.presenceCache.getSteam();
 
     if (!music) {
-      return { music: null, updatedAt: Date.now() };
+      return { music: null, steam, updatedAt: Date.now() };
     }
 
     const now = Date.now();
@@ -30,6 +59,7 @@ export class PresenceService {
 
     return {
       music,
+      steam,
       updatedAt: now,
     };
   }
@@ -122,5 +152,41 @@ export class PresenceService {
 
     await this.presenceCache.publish('music.updated', music);
     this.lastMusicEmittedProgress = music.progressPercent;
+  }
+
+  async updateSteam(steam: SteamPresence, previous?: SteamPresence | null) {
+    const prev = previous ?? (await this.presenceCache.getSteam());
+
+    const endedSession =
+      prev?.state === 'PLAYING' &&
+      prev.game &&
+      (steam.state !== 'PLAYING' || prev.game.appId !== steam.game?.appId);
+
+    if (endedSession) {
+      await this.steamRepository.replaceLatest({
+        appId: prev.game.appId,
+        name: prev.game.name,
+        iconUrl: prev.game.iconUrl ?? null,
+        startedAt: new Date(prev.session?.startedAt ?? Date.now()),
+        endedAt: new Date(steam.lastUpdatedAt),
+      });
+
+      const recent = await this.steamRepository.findRecent(1);
+      await this.presenceCache.publish(
+        'steam.history.updated',
+        recent.map((entry) => withSteamDuration(entry)),
+      );
+    }
+
+    await this.presenceCache.setSteam(steam);
+
+    const full = await this.getFullPresence();
+    await this.presenceCache.setFull(full);
+
+    if (!shouldEmitSteam(prev, steam)) {
+      return;
+    }
+
+    await this.presenceCache.publish('steam.updated', steam);
   }
 }
