@@ -16,6 +16,11 @@ export interface IEnvironmentVariables {
   REDIS_URL: string;
   APP_VERSION?: string;
   MUSIC_WS_TOKEN: string;
+  STEAM_KEY: string;
+  STEAM_ID: string;
+  STEAM_FRAME_URL?: string;
+  STEAM_BRACKGROUND_SMALL?: string;
+  STEAM_BRACKGROUND_LARGE?: string;
 }
 
 const environmentSchema = z.object({
@@ -50,6 +55,11 @@ const environmentSchema = z.object({
     }, 'REDIS_URL must be a valid Redis URL'),
   APP_VERSION: z.string().optional().default('1.0.0'),
   MUSIC_WS_TOKEN: z.string().min(1, 'MUSIC_WS_TOKEN must be provided'),
+  STEAM_KEY: z.string().min(1, 'STEAM_KEY must be provided'),
+  STEAM_ID: z.string().min(1, 'STEAM_ID must be provided'),
+  STEAM_FRAME_URL: z.string().optional(),
+  STEAM_BRACKGROUND_SMALL: z.string().optional(),
+  STEAM_BRACKGROUND_LARGE: z.string().optional(),
 });
 
 const result = environmentSchema.safeParse(process.env);
