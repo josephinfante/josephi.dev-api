@@ -64,41 +64,6 @@ export class PresenceService {
     };
   }
 
-  // async updateMusic(music: MusicPresence) {
-  //   const previous = await this.presenceCache.getMusic();
-
-  //   const becameStopped = music.state === 'STOPPED' && previous && previous.state !== 'STOPPED';
-
-  //   /* ---------- DB LOGIC ---------- */
-
-  //   if (becameStopped && previous.title) {
-  //     await this.musicRepository.closeActive();
-
-  //     await this.musicRepository.create({
-  //       title: previous.title,
-  //       artist: previous.artist,
-  //       cover: previous.cover,
-  //       listenUrl: previous.listenUrl,
-  //       startedAt: new Date(previous.timestamp),
-  //     });
-  //   }
-
-  //   /* ---------- CACHE ---------- */
-
-  //   await this.presenceCache.setMusic(music);
-
-  //   const full = await this.getFullPresence();
-  //   await this.presenceCache.setFull(full);
-
-  //   /* ---------- EMIT CONTROL ---------- */
-
-  //   if (!shouldEmitMusic(previous, music, this.lastMusicEmittedProgress)) {
-  //     return;
-  //   }
-
-  //   await this.presenceCache.publish('music.updated', music);
-  //   this.lastMusicEmittedProgress = music.progressPercent;
-  // }
   async updateMusic(music: MusicPresence) {
     const previous = await this.presenceCache.getMusic();
 
