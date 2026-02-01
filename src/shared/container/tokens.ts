@@ -7,4 +7,5 @@ export const TOKENS = {
   PresenceCache: Symbol.for('PresenceCache'),
 
   MusicRepository: Symbol.for('MusicRepository'),
+  SteamRepository: Symbol.for('SteamRepository'),
 } as const;
