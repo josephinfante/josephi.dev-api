@@ -42,8 +42,10 @@ export class PresenceService {
   ) {}
 
   async getFullPresence(): Promise<Presence> {
-    const music = await this.presenceCache.getMusic();
-    const steam = await this.presenceCache.getSteam();
+    const [music, steam] = await Promise.all([
+      this.presenceCache.getMusic(),
+      this.presenceCache.getSteam(),
+    ]);
 
     if (!music) {
       return { music: null, steam, updatedAt: Date.now() };
