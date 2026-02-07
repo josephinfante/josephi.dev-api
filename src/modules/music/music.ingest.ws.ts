@@ -6,9 +6,17 @@ import { parseMusicPresence } from './music.parser';
 import { validateMusicWsToken } from '@shared/security/ws-auth';
 
 let disconnectTimer: NodeJS.Timeout | null = null;
+const HEARTBEAT_INTERVAL_MS = 25000;
 
 export function startMusicIngestWS(server: any) {
   const wss = new WebSocketServer({ server, path: '/ws/music' });
+  const heartbeatTimer = setInterval(() => {
+    for (const client of wss.clients) {
+      if (client.readyState === client.OPEN) {
+        client.ping();
+      }
+    }
+  }, HEARTBEAT_INTERVAL_MS);
 
   const presenceService = container.resolve(PresenceService);
 
@@ -80,5 +88,9 @@ export function startMusicIngestWS(server: any) {
         });
       }, 5000);
     });
+  });
+
+  wss.on('close', () => {
+    clearInterval(heartbeatTimer);
   });
 }
