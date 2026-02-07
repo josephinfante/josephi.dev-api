@@ -18,9 +18,7 @@ export interface IEnvironmentVariables {
   MUSIC_WS_TOKEN: string;
   STEAM_KEY: string;
   STEAM_ID: string;
-  STEAM_FRAME_URL?: string;
-  STEAM_BRACKGROUND_SMALL?: string;
-  STEAM_BRACKGROUND_LARGE?: string;
+  GITHUB_TOKEN: string;
 }
 
 const environmentSchema = z.object({
@@ -57,9 +55,7 @@ const environmentSchema = z.object({
   MUSIC_WS_TOKEN: z.string().min(1, 'MUSIC_WS_TOKEN must be provided'),
   STEAM_KEY: z.string().min(1, 'STEAM_KEY must be provided'),
   STEAM_ID: z.string().min(1, 'STEAM_ID must be provided'),
-  STEAM_FRAME_URL: z.string().optional(),
-  STEAM_BRACKGROUND_SMALL: z.string().optional(),
-  STEAM_BRACKGROUND_LARGE: z.string().optional(),
+  GITHUB_TOKEN: z.string().min(1, 'GITHUB_TOKEN must be provided'),
 });
 
 const result = environmentSchema.safeParse(process.env);

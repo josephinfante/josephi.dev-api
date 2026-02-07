@@ -8,4 +8,5 @@ export const TOKENS = {
 
   MusicRepository: Symbol.for('MusicRepository'),
   SteamRepository: Symbol.for('SteamRepository'),
+  GithubRepository: Symbol.for('GithubRepository'),
 } as const;

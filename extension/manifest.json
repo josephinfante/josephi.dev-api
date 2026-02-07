@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "YT Now Playing",
+  "version": "1.0",
+  "permissions": ["activeTab"],
+  "host_permissions": ["https://music.youtube.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://music.youtube.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
