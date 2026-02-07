@@ -23,14 +23,15 @@ export function startMusicIngestWS(server: any) {
 
     const url = new URL(req.url!, 'http://localhost');
     const token = url.searchParams.get('token');
+    const clientId = url.searchParams.get('clientId') || 'unknown';
 
     if (!validateMusicWsToken(token)) {
-      logger.warn('[WS] Unauthorized music client');
+      logger.warn(`[WS] Unauthorized music client (clientId=${clientId})`);
       ws.close();
       return;
     }
 
-    logger.info('[WS] Music client authenticated');
+    logger.info(`[WS] Music client authenticated (clientId=${clientId})`);
 
     ws.on('message', async (msg) => {
       try {
@@ -51,8 +52,11 @@ export function startMusicIngestWS(server: any) {
       }
     });
 
-    ws.on('close', async () => {
-      logger.info('[WS] Music client disconnected');
+    ws.on('close', async (code, reasonBuffer) => {
+      const reason = reasonBuffer?.toString() || '';
+      logger.info(
+        `[WS] Music client disconnected (clientId=${clientId}, code=${code}, reason=${reason || 'empty'})`,
+      );
 
       if (disconnectTimer) clearTimeout(disconnectTimer);
 
