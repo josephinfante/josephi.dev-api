@@ -42,6 +42,12 @@ export type SteamRecentGame = {
   playtimeForeverMs: number | null;
 };
 
+export type SteamProfileAssets = {
+  frameUrl: string;
+  backgroundSmall: string;
+  backgroundLarge: string;
+};
+
 export type Presence = {
   music: MusicPresence | null;
   steam: SteamPresence | null;
