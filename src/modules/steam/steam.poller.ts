@@ -1,5 +1,9 @@
 import axios from 'axios';
-import type { SteamPresence, SteamRecentGame } from '@modules/presence/presence.types';
+import type {
+  SteamPresence,
+  SteamProfileAssets,
+  SteamRecentGame,
+} from '@modules/presence/presence.types';
 import type { PresenceCache } from '@modules/presence/presence.cache';
 import { PresenceService } from '@modules/presence/presence.service';
 import { shouldEmitSteamRecent } from '@modules/presence/presence.helper';
@@ -12,6 +16,13 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000;
 const RECOVERY_INTERVAL_MS = 60 * 1000;
 const RECOVERY_WINDOW_MS = 5 * 60 * 1000;
 const STEAM_ICON_BASE = 'https://media.steampowered.com/steamcommunity/public/images/apps';
+const STEAM_ASSET_BASE = 'https://media.steampowered.com/steamcommunity/public/images/';
+const STEAM_PROFILE_FRAME_ENDPOINT =
+  'https://api.steampowered.com/IPlayerService/GetAvatarFrame/v1';
+const STEAM_PROFILE_BACKGROUND_ENDPOINT =
+  'https://api.steampowered.com/IPlayerService/GetProfileBackground/v1';
+const STEAM_MINI_PROFILE_BACKGROUND_ENDPOINT =
+  'https://api.steampowered.com/IPlayerService/GetMiniProfileBackground/v1';
 
 type SteamPlayerSummaryResponse = {
   response: {
@@ -46,6 +57,22 @@ type SteamRecentlyPlayedGame = {
   playtime_forever?: number;
 };
 
+type SteamAvatarFrameResponse = {
+  response: {
+    avatar_frame?: {
+      image_small?: string;
+    };
+  };
+};
+
+type SteamProfileBackgroundResponse = {
+  response: {
+    profile_background?: {
+      movie_webm?: string;
+    };
+  };
+};
+
 function formatElapsed(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const hours = Math.floor(totalSeconds / 3600);
@@ -67,6 +94,7 @@ function buildSteamPresence(
   player: SteamPlayerSummary,
   recent: SteamRecentlyPlayedGame[] | undefined,
   previous: SteamPresence | null,
+  assets: SteamProfileAssets,
 ): SteamPresence {
   const now = Date.now();
   const isOffline = player.personastate === 0;
@@ -122,14 +150,19 @@ function buildSteamPresence(
       nickname: player.personaname,
       profileUrl: player.profileurl,
       avatar: player.avatarfull || player.avatar || '',
-      frameUrl: environment.STEAM_FRAME_URL ?? '',
-      backgroundSmall: environment.STEAM_BRACKGROUND_SMALL ?? '',
-      backgroundLarge: environment.STEAM_BRACKGROUND_LARGE ?? '',
+      frameUrl: assets.frameUrl,
+      backgroundSmall: assets.backgroundSmall,
+      backgroundLarge: assets.backgroundLarge,
     },
     game,
     session,
     lastUpdatedAt: now,
   };
+}
+
+function buildAssetUrl(path?: string | null): string {
+  if (!path) return '';
+  return `${STEAM_ASSET_BASE}${path}`;
 }
 
 async function fetchPlayerSummary(): Promise<SteamPlayerSummary | null> {
@@ -142,6 +175,57 @@ async function fetchRecentlyPlayed(): Promise<SteamRecentlyPlayedGame[] | undefi
   const url = `https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001?key=${environment.STEAM_KEY}&steamid=${environment.STEAM_ID}&format=json`;
   const { data } = await axios.get<SteamRecentlyPlayedResponse>(url, { timeout: 10000 });
   return data.response.games;
+}
+
+async function fetchSteamProfileAssets(presenceCache: PresenceCache): Promise<SteamProfileAssets> {
+  const cached = await presenceCache.getSteamProfileAssets();
+  if (cached) {
+    return cached;
+  }
+
+  const params = {
+    key: environment.STEAM_KEY,
+    steamid: environment.STEAM_ID,
+    format: 'json',
+  };
+
+  try {
+    const [frameResponse, miniBackgroundResponse, backgroundResponse] = await Promise.all([
+      axios.get<SteamAvatarFrameResponse>(STEAM_PROFILE_FRAME_ENDPOINT, {
+        params,
+        timeout: 10000,
+      }),
+      axios.get<SteamProfileBackgroundResponse>(STEAM_MINI_PROFILE_BACKGROUND_ENDPOINT, {
+        params,
+        timeout: 10000,
+      }),
+      axios.get<SteamProfileBackgroundResponse>(STEAM_PROFILE_BACKGROUND_ENDPOINT, {
+        params,
+        timeout: 10000,
+      }),
+    ]);
+
+    const assets: SteamProfileAssets = {
+      frameUrl: buildAssetUrl(frameResponse.data.response.avatar_frame?.image_small),
+      backgroundSmall: buildAssetUrl(
+        miniBackgroundResponse.data.response.profile_background?.movie_webm,
+      ),
+      backgroundLarge: buildAssetUrl(
+        backgroundResponse.data.response.profile_background?.movie_webm,
+      ),
+    };
+
+    await presenceCache.setSteamProfileAssets(assets);
+
+    return assets;
+  } catch (error) {
+    logger.warn({ err: error }, '[STEAM] Failed to fetch profile assets');
+    return {
+      frameUrl: '',
+      backgroundSmall: '',
+      backgroundLarge: '',
+    };
+  }
 }
 
 type PollResult = { success: true } | { success: false };
@@ -165,7 +249,11 @@ async function pollOnce(): Promise<PollResult> {
   const presenceCache = container.resolve<PresenceCache>(TOKENS.PresenceCache);
 
   try {
-    const [player, recent] = await Promise.all([fetchPlayerSummary(), fetchRecentlyPlayed()]);
+    const [player, recent, assets] = await Promise.all([
+      fetchPlayerSummary(),
+      fetchRecentlyPlayed(),
+      fetchSteamProfileAssets(presenceCache),
+    ]);
 
     if (!player) {
       logger.warn('[STEAM] No player summary available');
@@ -173,7 +261,7 @@ async function pollOnce(): Promise<PollResult> {
     }
 
     const previous = await presenceCache.getSteam();
-    const next = buildSteamPresence(player, recent, previous);
+    const next = buildSteamPresence(player, recent, previous, assets);
 
     const recentGames: SteamRecentGame[] =
       recent?.map((entry) => ({
@@ -211,6 +299,11 @@ async function markOfflineAfterRecovery() {
   const presenceService = container.resolve(PresenceService);
   const presenceCache = container.resolve<PresenceCache>(TOKENS.PresenceCache);
   const previous = await presenceCache.getSteam();
+  const assets = (await presenceCache.getSteamProfileAssets()) ?? {
+    frameUrl: '',
+    backgroundSmall: '',
+    backgroundLarge: '',
+  };
   const now = Date.now();
 
   const offline: SteamPresence = {
@@ -220,9 +313,9 @@ async function markOfflineAfterRecovery() {
       nickname: '',
       profileUrl: '',
       avatar: '',
-      frameUrl: environment.STEAM_FRAME_URL ?? '',
-      backgroundSmall: environment.STEAM_BRACKGROUND_SMALL ?? '',
-      backgroundLarge: environment.STEAM_BRACKGROUND_LARGE ?? '',
+      frameUrl: assets.frameUrl,
+      backgroundSmall: assets.backgroundSmall,
+      backgroundLarge: assets.backgroundLarge,
     },
     game: null,
     session: null,
